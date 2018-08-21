@@ -39,3 +39,33 @@ ladder = undefined
 --
 neighbor :: String -> String -> Bool
 neighbor v w = length (filter not $ zipWith (==) v w) == 1
+
+type Neighbors = (String,String)
+
+-- |
+--
+-- >>> let ws = words "bag bat bog dog fog"
+-- >>> neighbors ws "fog"
+-- [("bog","fog"),("dog","fog")]
+--
+neighbors :: [String] -> String -> [Neighbors]
+neighbors words w = filter (uncurry neighbor) $ zip words (repeat w)
+
+
+-- |
+--
+-- >>> let ns = [("cat","bat"),("bat","bag"),("bag","bog"),("bog","dog"),("dog","***")]
+-- >>> path "cat" ns
+-- ["cat","bat","bag","bog","dog"]
+--
+-- >>> path "foo" ns
+-- []
+--
+path ::  String -> [Neighbors] -> [String]
+path w ns = reverse $ link w []
+  where
+    link :: String -> [String] -> [String]
+    link v p = case lookup v ns of
+                    Nothing    -> p
+                    Just "***" -> v:p
+                    Just v'    -> link v' (v:p)
