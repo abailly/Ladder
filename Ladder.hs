@@ -1,6 +1,7 @@
 #!/usr/bin/env stack
 -- stack runhaskell --package async --package unix --
 
+import           Data.List          ((\\))
 import           System.Environment
 
 main = getArgs >>= checkArgs >>= readWords >>= printLadder
@@ -69,3 +70,24 @@ path w ns = reverse $ link w []
                     Nothing    -> p
                     Just "***" -> v:p
                     Just v'    -> link v' (v:p)
+
+
+type Tree = [Neighbors]
+type State =([String],Tree)
+
+-- | Explore
+-- >>> let ws = words "bag bat bog cat cog dog fog"
+-- >>> explore ws "fog" [("fog","")]
+-- (["bog","cog","dog"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog")])
+--
+-- >>> explore ws "bag" [("fog",""),("bog","fog"),("cog","fog"),("dog","fog")]
+-- (["bat"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bat","bag")])
+--
+-- >>> explore ws "fog" [("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bat","bag")]
+-- ([],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bat","bag")])
+--
+explore :: [String] -> String -> Tree -> State
+explore ws w t = (fmap fst ns, t')
+  where
+    ns = filter (not . (`elem` fmap fst t) . fst) $ neighbors ws w
+    t' = t ++ ns
