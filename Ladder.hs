@@ -89,5 +89,36 @@ type State =([String],Tree)
 explore :: [String] -> String -> Tree -> State
 explore ws w t = (fmap fst ns, t')
   where
-    ns = filter (not . (`elem` fmap fst t) . fst) $ neighbors ws w
+    ns = filter (notInNeighbors t . fst) $ neighbors ws w
     t' = t ++ ns
+
+notInNeighbors t = not . (`elem` fmap fst t)
+
+-- | BFS
+--
+-- >>> let ws = words "bag bat bog cat cog dog fog"
+--
+-- >>> breadthSearch ws (["fog"],[("fog","")])
+-- (["bog","cog","dog"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog")])
+--
+-- >>> breadthSearch ws (["bog","cog","dog"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog")])
+-- (["cog","dog","bag"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog")])
+--
+-- >>> breadthSearch ws (["cog","dog","bag"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog")])
+-- (["dog","bag"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog")])
+--
+-- >>> breadthSearch ws (["dog","bag"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog")])
+-- (["bag"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog")])
+--
+-- >>> breadthSearch ws (["bag"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog")])
+-- (["bat"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog"),("bat","bag")])
+--
+-- >>> breadthSearch ws (["bat"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog"),("bat","bag")])
+-- (["cat"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog"),("bat","bag"),("cat","bat")])
+--
+-- >>> breadthSearch ws (["cat"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog"),("bat","bag"),("cat","bat")])
+-- ([],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog"),("bat","bag"),("cat","bat")])
+breadthSearch :: [String] -> State -> State
+breadthSearch ws (w:vs, tree) = (vs ++ vs', tree')
+  where
+    (vs',tree') = explore ws w tree
