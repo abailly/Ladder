@@ -1,15 +1,15 @@
 #!/usr/bin/env stack
--- stack runhaskell --package async --package unix --
+-- stack runhaskell --
 
 import           Data.List          ((\\))
 import           System.Environment
 
 main = getArgs >>= checkArgs >>= readWords >>= printLadder
-    where
+  where
     checkArgs args | length args == 3 = return args
-    checkArgs args | otherwise       = error "usage: ladder <wordlistfile> <start> <end>"
+                   | otherwise        = error "usage: ladder <wordlistfile> <start> <end>"
 
-    readWords [f,s,t] = readFile f >>= \cs -> return ( filter (\w -> length w == length s) $ words cs, s, t)
+    readWords [f,s,t] = readFile f >>= \cs -> return ( filter (\w -> length w == length s) $ lines cs, s, t)
 
     printLadder (ws,s,t) = putStrLn $ unwords $ ladder ws s t
 
