@@ -13,8 +13,6 @@ main = getArgs >>= checkArgs >>= readWords >>= printLadder
 
     printLadder (ws,s,t) = putStrLn $ unwords $ ladder ws s t
 
-ladder :: [ String ] -> String -> String -> [ String ]
-ladder = undefined
 
 -- | Neighbor
 -- >>> neighbor "cat" "dog"
@@ -96,29 +94,46 @@ notInNeighbors t = not . (`elem` fmap fst t)
 
 -- | BFS
 --
--- >>> let ws = words "bag bat bog cat cog dog fog"
+-- >>> let ws = words "dog fog fig"
+-- >>> let search = breadthSearch ws "dog"
+-- >>> search (["fog"],[("fog","")])
+-- (["dog","fig"],[("fog",""),("dog","fog"),("fig","fog")])
 --
--- >>> breadthSearch ws (["fog"],[("fog","")])
--- (["bog","cog","dog"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog")])
+-- >>> search $ search (["fog"],[("fog","")])
+-- (["dog","fig"],[("fog",""),("dog","fog"),("fig","fog")])
 --
--- >>> breadthSearch ws (["bog","cog","dog"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog")])
--- (["cog","dog","bag"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog")])
+-- >>> search $ search $ search (["fog"],[("fog","")])
+-- (["dog","fig"],[("fog",""),("dog","fog"),("fig","fog")])
 --
--- >>> breadthSearch ws (["cog","dog","bag"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog")])
--- (["dog","bag"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog")])
---
--- >>> breadthSearch ws (["dog","bag"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog")])
--- (["bag"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog")])
---
--- >>> breadthSearch ws (["bag"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog")])
--- (["bat"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog"),("bat","bag")])
---
--- >>> breadthSearch ws (["bat"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog"),("bat","bag")])
--- (["cat"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog"),("bat","bag"),("cat","bat")])
---
--- >>> breadthSearch ws (["cat"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog"),("bat","bag"),("cat","bat")])
--- ([],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bag","bog"),("bat","bag"),("cat","bat")])
-breadthSearch :: [String] -> State -> State
-breadthSearch ws (w:vs, tree) = (vs ++ vs', tree')
+-- >>> let ws' = words "bog dog fog fig bag bat cat"
+-- >>> breadthSearch ws' "dog" (["fig"],[("fig","")])
+-- (["dog","bag"],[("fig",""),("fog","fig"),("bog","fog"),("dog","fog"),("bag","bog")])
+breadthSearch :: [String] -> String -> State -> State
+breadthSearch _  _    st@([], _)   = st
+breadthSearch ws stop st@(w:vs, tree)
+  | stop == w = st
+  | otherwise = breadthSearch ws stop (vs ++ vs', tree')
   where
     (vs',tree') = explore ws w tree
+
+-- |
+-- >>> let ws = words "bag bat bog cat cog dog fog"
+--
+-- >>> unwords $ ladder ws "bag" "fog"
+-- "bag bog fog"
+--
+-- >>> unwords $ ladder ws "cat" "dog"
+-- "cat bat bag bog dog"
+--
+-- >>> unwords $ ladder ws "foo" "dog"
+-- ""
+--
+-- >>> unwords $ ladder ws "dog" "qux"
+-- ""
+
+ladder :: [String] -> String -> String -> [String]
+ladder ws start target
+  | not (start `elem` ws) = []
+  | otherwise = case breadthSearch ws target ([start], [(start, "")]) of
+      ([], _) -> []
+      (_, ns) -> reverse $ path target ns
