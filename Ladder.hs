@@ -1,8 +1,11 @@
 #!/usr/bin/env stack
 -- stack runhaskell --
 
+{-# LANGUAGE TupleSections #-}
+
 import           Data.List          ((\\))
 import           System.Environment
+import           Data.Maybe
 
 main = getArgs >>= checkArgs >>= readWords >>= printLadder
   where
@@ -13,127 +16,134 @@ main = getArgs >>= checkArgs >>= readWords >>= printLadder
 
     printLadder (ws,s,t) = putStrLn $ unwords $ ladder ws s t
 
+ladder :: [String] -> String -> String -> [ String ]
+ladder = undefined
 
--- | Neighbor
+-- |
+--
 -- >>> neighbor "cat" "dog"
 -- False
---
 -- >>> neighbor "cat" "bat"
 -- True
---
 -- >>> neighbor "cat" "cot"
 -- True
---
 -- >>> neighbor "cat" "cob"
 -- False
---
 -- >>> neighbor "cat" "cab"
 -- True
---
 -- >>> neighbor "dog" "do"
 -- False
---
+-- >>> neighbor "dog" "du"
+-- False
 -- >>> neighbor "at" "cat"
 -- False
---
 neighbor :: String -> String -> Bool
-neighbor v w = length (filter not $ zipWith (==) v w) == 1
+neighbor (x:xs) (y:ys)
+  | x == y    = neighbor xs ys
+  | otherwise = xs == ys
+neighbor _ _ = False
+
+newtype Dictionary = Dict { theDict :: [String] }
+
+-- |
+-- >>> let ws = words "bag bat bog dog fog"
+-- >>> neighbors "fog" ws
+-- ["bog","dog"]
+--
+-- >>> neighbors "bog" ws
+-- ["bag","dog","fog"]
+neighbors :: String -> Dictionary -> [String]
+neighbors w = filter (neighbor w) . theDict
 
 type Neighbors = (String,String)
 
 -- |
---
 -- >>> let ws = words "bag bat bog dog fog"
--- >>> neighbors ws "fog"
+--
+-- >>> neighborsTo "fog" ws
 -- [("bog","fog"),("dog","fog")]
 --
-neighbors :: [String] -> String -> [Neighbors]
-neighbors words w = filter (uncurry neighbor) $ zip words (repeat w)
-
+-- >>> neighborsTo "bog" ws
+-- [("bag","bog"),("dog","bog"),("fog","bog")]
+neighborsTo :: String -> Dictionary -> [Neighbors]
+neighborsTo w (Dict ws) = zip (neighbors w ws) (repeat w)
 
 -- |
---
 -- >>> let ns = [("cat","bat"),("bat","bag"),("bag","bog"),("bog","dog"),("dog","***")]
 -- >>> path "cat" ns
 -- ["cat","bat","bag","bog","dog"]
---
 -- >>> path "foo" ns
 -- []
---
-path ::  String -> [Neighbors] -> [String]
-path w ns = reverse $ link w []
-  where
-    link :: String -> [String] -> [String]
-    link v p = case lookup v ns of
-                    Nothing    -> p
-                    Just "***" -> v:p
-                    Just v'    -> link v' (v:p)
+path :: String -> Tree -> [String]
+path w ns = case lookupEdge w ns of
+  Just found -> w : path found ns
+  Nothing    -> []
 
 
 type Tree = [Neighbors]
+
+-- |
+--
+-- >>> initialTree "dog"
+-- [("dog","")]
+initialTree :: String -> Tree
+initialTree w = [(w,"")]
+
+
+-- |
+-- >>> insertEdge "fog" "dog" [("dog","")]
+-- [("fog","dog"),("dog","")]
+-- >>> insertEdge "fog" "dog" [("fog","dog")]
+-- [("fog","dog")]
+-- >>> insertEdge "bog" "dog" [("fog","dog"),("dog","")]
+-- [("bog","dog"),("fog","dog"),("dog","")]
+--
+-- Prevents construction of a graph:
+-- >>> insertEdge "fog" "fig" [("fog","dog"),("dog","")]
+-- [("fog","dog"),("dog","")]
+--
+-- Prevents construction of a forest
+-- >>> insertEdge "bog" "bag" [("fog","dog"),("dog","")]
+-- [("fog","dog"),("dog","")]
+insertEdge :: String -> String -> Tree -> Tree
+insertEdge n w t = case lookup n t of
+  Just _  -> t
+  Nothing -> case lookup w t of
+    Just _  -> (n,w) : t
+    Nothing -> t
+
+lookupEdge :: String -> Tree -> Maybe String
+lookupEdge = lookup
+
+
 type State =([String],Tree)
-
--- | Explore
--- >>> let ws = words "bag bat bog cat cog dog fog"
--- >>> explore ws "fog" [("fog","")]
--- (["bog","cog","dog"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog")])
---
--- >>> explore ws "bag" [("fog",""),("bog","fog"),("cog","fog"),("dog","fog")]
--- (["bat"],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bat","bag")])
---
--- >>> explore ws "fog" [("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bat","bag")]
--- ([],[("fog",""),("bog","fog"),("cog","fog"),("dog","fog"),("bat","bag")])
---
-explore :: [String] -> String -> Tree -> State
-explore ws w t = (fmap fst ns, t')
-  where
-    ns = filter (notInNeighbors t . fst) $ neighbors ws w
-    t' = t ++ ns
-
-notInNeighbors t = not . (`elem` fmap fst t)
-
--- | BFS
---
--- >>> let ws = words "dog fog fig"
--- >>> let search = breadthSearch ws "dog"
--- >>> search (["fog"],[("fog","")])
--- (["dog","fig"],[("fog",""),("dog","fog"),("fig","fog")])
---
--- >>> search $ search (["fog"],[("fog","")])
--- (["dog","fig"],[("fog",""),("dog","fog"),("fig","fog")])
---
--- >>> search $ search $ search (["fog"],[("fog","")])
--- (["dog","fig"],[("fog",""),("dog","fog"),("fig","fog")])
---
--- >>> let ws' = words "bog dog fog fig bag bat cat"
--- >>> breadthSearch ws' "dog" (["fig"],[("fig","")])
--- (["dog","bag"],[("fig",""),("fog","fig"),("bog","fog"),("dog","fog"),("bag","bog")])
-breadthSearch :: [String] -> String -> State -> State
-breadthSearch _  _    st@([], _)   = st
-breadthSearch ws stop st@(w:vs, tree)
-  | stop == w = st
-  | otherwise = breadthSearch ws stop (vs ++ vs', tree')
-  where
-    (vs',tree') = explore ws w tree
 
 -- |
 -- >>> let ws = words "bag bat bog cat cog dog fog"
+-- >>> let (vs,t) = explore ws "fog" $ initialTree "fog"
+-- >>> vs
+-- ["bog","cog","dog"]
+-- >>> lookupEdge "fog" t
+-- Just ""
+-- >>> lookupEdge "bog" t
+-- Just "fog"
+-- >>> lookupEdge "cog" t
+-- Just "fog"
+-- >>> lookupEdge "dog" t
+-- Just "fog"
 --
--- >>> unwords $ ladder ws "bag" "fog"
--- "bag bog fog"
+-- let (vt,u) = explore ws "bag" t
+-- >>> lookupEdge "bat" u
+-- Just "bag"
 --
--- >>> unwords $ ladder ws "cat" "dog"
--- "cat bat bag bog dog"
---
--- >>> unwords $ ladder ws "foo" "dog"
--- ""
---
--- >>> unwords $ ladder ws "dog" "qux"
--- ""
+-- >>> fst $ explore ws "fog" u
+-- []
+explore :: Dictionary -> String -> Tree -> State
+explore dict word tree =
+    let neighbors = neighborsTo word dict
+        neighborsToKeep = mapMaybe lookupEdgeInTree neighbors
+        tree' = foldl insertEdge tree neighborsToKeep where
+        lookupEdgeInTree n = lookupEdge n tree
+    in (neighborsToKeep, tree')
 
-ladder :: [String] -> String -> String -> [String]
-ladder ws start target
-  | not (start `elem` ws) = []
-  | otherwise = case breadthSearch ws target ([start], [(start, "")]) of
-      ([], _) -> []
-      (_, ns) -> reverse $ path target ns
+                             -- mapMaybe :: (a -> Maybe b) -> [a] -> [b]
