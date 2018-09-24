@@ -1,11 +1,10 @@
 #!/usr/bin/env stack
 -- stack runhaskell --
 
-{-# LANGUAGE TupleSections #-}
 
 import           Data.List          ((\\))
-import           System.Environment
 import           Data.Maybe
+import           System.Environment
 
 main = getArgs >>= checkArgs >>= readWords >>= printLadder
   where
@@ -43,7 +42,7 @@ neighbor (x:xs) (y:ys)
   | otherwise = xs == ys
 neighbor _ _ = False
 
-newtype Dictionary = Dict { theDict :: [String] }
+type Dictionary = [String]
 
 -- |
 -- >>> let ws = words "bag bat bog dog fog"
@@ -53,7 +52,7 @@ newtype Dictionary = Dict { theDict :: [String] }
 -- >>> neighbors "bog" ws
 -- ["bag","dog","fog"]
 neighbors :: String -> Dictionary -> [String]
-neighbors w = filter (neighbor w) . theDict
+neighbors w = filter (neighbor w)
 
 type Neighbors = (String,String)
 
@@ -66,7 +65,7 @@ type Neighbors = (String,String)
 -- >>> neighborsTo "bog" ws
 -- [("bag","bog"),("dog","bog"),("fog","bog")]
 neighborsTo :: String -> Dictionary -> [Neighbors]
-neighborsTo w (Dict ws) = zip (neighbors w ws) (repeat w)
+neighborsTo w ws = zip (neighbors w ws) (repeat w)
 
 -- |
 -- >>> let ns = [("cat","bat"),("bat","bag"),("bag","bog"),("bog","dog"),("dog","***")]
@@ -132,18 +131,18 @@ type State =([String],Tree)
 -- >>> lookupEdge "dog" t
 -- Just "fog"
 --
--- let (vt,u) = explore ws "bag" t
--- >>> lookupEdge "bat" u
--- Just "bag"
+-- >>> let (vt,u) = explore ws "bog" t
+-- >>> lookupEdge "bag" u
+-- Just "bog"
 --
 -- >>> fst $ explore ws "fog" u
 -- []
 explore :: Dictionary -> String -> Tree -> State
 explore dict word tree =
-    let neighbors = neighborsTo word dict
-        neighborsToKeep = mapMaybe lookupEdgeInTree neighbors
-        tree' = foldl insertEdge tree neighborsToKeep where
-        lookupEdgeInTree n = lookupEdge n tree
-    in (neighborsToKeep, tree')
-
-                             -- mapMaybe :: (a -> Maybe b) -> [a] -> [b]
+  let nextWords = neighborsToFromNotIn :: [ String ]
+      newTree = addEdgesFromTo nextWords :: Tree
+      neighborsToFromNotIn = filter notInTree (fmap fst (neighborsTo word dict))
+      notInTree w = w `notElem` wordsInTree
+      wordsInTree = fmap fst tree
+      addEdgesFromTo = foldr (flip insertEdge word) tree
+  in  (nextWords, newTree)
