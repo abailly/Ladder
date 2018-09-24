@@ -1,10 +1,25 @@
 #!/usr/bin/env stack
 -- stack runhaskell --
 
+-- Retro
+-- * les tuples c'est pas forcement top comme encodage
+-- * c'est alambiqué...
+-- * nommage des variables avec 1/2 lettres ?
+-- * difficulté avec l'exposition -> on part la big picture. on lutte avec
+--   la présentation autant qu'avec le sujet
+-- * on suit un chemin précis, on a l'impression que le kata a été codé
+--    pas à pas dans le REPL
+-- * on a pas l'intuition du résultat final, on suit une recette de cuisine
+-- * manque hypothèses explicites sur les structures (on construit pas une forêt mais un arbre)
+-- * globalement ça manque de types...  les types aident à appuyer le raisonnement
+-- * ça marche à la fin et c'est cohérent
+-- * le sujet est intéressant
 
-import           Data.List          ((\\))
+import           Data.List          (sort, (\\))
 import           Data.Maybe
+import           Data.Monoid
 import           System.Environment
+
 
 main = getArgs >>= checkArgs >>= readWords >>= printLadder
   where
@@ -16,7 +31,11 @@ main = getArgs >>= checkArgs >>= readWords >>= printLadder
     printLadder (ws,s,t) = putStrLn $ unwords $ ladder ws s t
 
 ladder :: [String] -> String -> String -> [ String ]
-ladder = undefined
+ladder dict source target =
+  let (ws, tree) = breadthSearch dict target $ initialState source
+  in case ws of
+    [] -> []
+    _  -> reverse $ path target tree
 
 -- |
 --
@@ -140,9 +159,41 @@ type State =([String],Tree)
 explore :: Dictionary -> String -> Tree -> State
 explore dict word tree =
   let nextWords = neighborsToFromNotIn :: [ String ]
-      newTree = addEdgesFromTo nextWords :: Tree
       neighborsToFromNotIn = filter notInTree (fmap fst (neighborsTo word dict))
       notInTree w = w `notElem` wordsInTree
-      wordsInTree = fmap fst tree
+
+      newTree = addEdgesFromTo nextWords :: Tree
       addEdgesFromTo = foldr (flip insertEdge word) tree
+      wordsInTree = fmap fst tree
+
   in  (nextWords, newTree)
+
+
+initialState :: String -> State
+initialState w = ([w],[(w, "")])
+
+-- |
+-- >>> let ws = words "dog fog fig"
+-- >>> let search = breadthSearch ws "dog"
+-- >>> fst $ search $ initialState "fog"
+-- ["dog","fig"]
+--
+-- >>> fst $ search $ search $ initialState "fog"
+-- ["dog","fig"]
+--
+-- >>> fst $ search $ search $ search $ initialState "fog"
+-- ["dog","fig"]
+--
+-- >>> let ws' = words "bog dog fog fig bag bat cat"
+-- >>> let (vs,t) = breadthSearch ws' "dog" $ initialState "fig"
+--
+-- >>> unwords $ sort $ map fst t
+-- "bag bog dog fig fog"
+-- >>> unwords $ path "dog" t
+-- "dog fog fig"
+breadthSearch :: Dictionary -> String -> State -> State
+breadthSearch dict stopWord st@ (w:ws,tree)
+ | w == stopWord = st
+ | otherwise = let (newWords, newTree) = explore dict w tree
+               in breadthSearch dict stopWord (ws <> newWords, newTree)
+breadthSearch _dict _ st = st
