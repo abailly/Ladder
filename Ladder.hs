@@ -11,9 +11,11 @@
 --    pas à pas dans le REPL
 -- * on a pas l'intuition du résultat final, on suit une recette de cuisine
 -- * manque hypothèses explicites sur les structures (on construit pas une forêt mais un arbre)
--- * globalement ça manque de types...  les types aident à appuyer le raisonnement
+-- * globalement ça manque de types... les types aident à appuyer le raisonnement
 -- * ça marche à la fin et c'est cohérent
 -- * le sujet est intéressant
+-- * ça démontre bien la puissance de la composition de fonction
+
 
 import           Data.List          (sort, (\\))
 import           Data.Maybe
@@ -26,7 +28,7 @@ main = getArgs >>= checkArgs >>= readWords >>= printLadder
     checkArgs args | length args == 3 = return args
                    | otherwise        = error "usage: ladder <wordlistfile> <start> <end>"
 
-    readWords [f,s,t] = readFile f >>= \cs -> return ( filter (\w -> length w == length s) $ lines cs, s, t)
+    readWords [f,s,t] = readFile f >>= \cs -> return (filter (\w -> length w == length s) $ lines cs, s, t)
 
     printLadder (ws,s,t) = putStrLn $ unwords $ ladder ws s t
 
